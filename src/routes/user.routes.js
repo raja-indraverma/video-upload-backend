@@ -60,7 +60,7 @@ router.route("/avatar").patch(
 )
 
 router.route("/cover-image").patch(
-    verifyJWT, upload.single("/coverImage"), updateCoverImage
+    verifyJWT, upload.single("coverImage"), updateCoverImage
 )
 
 router.route("/c/:username").get(
