@@ -93,6 +93,7 @@ const toggleTweetLike = asyncHandler(async(req, res) => {
         })
 
         if(!newLike) return new ApiError(500, "failed to like the tweet");
+        liked = true
     }
 
     return res
