@@ -19,4 +19,4 @@ const likeSchema = new Schema({
     }
 }, {timestamps : true})
 
-export const likes = mongoose.model("Like", likeSchema);     //export the model
+export const Like = mongoose.model("Like", likeSchema);     //export the model
