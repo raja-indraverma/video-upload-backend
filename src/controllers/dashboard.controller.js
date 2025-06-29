@@ -18,7 +18,7 @@ const getChannelStats = asyncHandler(async(req, res) => {
         },
         {
             $group : {
-                _id : "$videofile",
+                _id : null,
                 totalviews : {
                     $sum : "$views"
                 },
