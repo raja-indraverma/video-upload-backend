@@ -92,56 +92,60 @@ const registerUser = asyncHandler(async (req, res) => {
 
 })
 
-const loginUser = asyncHandler(async (req, res) =>{
-    // req body -> data
-    // uername or email
-    // find user
-    // check password
-    // access and refresh token
-    // send cookie
+const loginUser = asyncHandler(async (req, res) => {
+  // get data from req.body
+  // username or email
+  // find the user
+  // check password
+  // generate access and refresh token
+  // send token in cookies
+  // return res
+    console.log(req.body)
+  const { email, password } = req.body;
 
-    const {email, username, password} = req.body;
-    if(!username && !email){
-        throw new ApiError(400, "username or email is required")
-    }
+  if (!email && !password) {
+    throw new ApiError(400, "All fields are required");
+  }
 
-    const user = await User.findOne({
-        $or : [{email}, {username}]
-    })
+  const user = await User.findOne({
+    $or: [{ email }],
+  });
 
-    if(!user){
-        throw new ApiError(404, "user not found")
-    }
+  if (!user) {
+    throw new ApiError(404, "Invalid email or password");
+  }
 
-    const isPasswordValid = await user.isPasswordCorrect(password);
-    if(!isPasswordValid){
-        throw new ApiError(401, "either username or password is incorrect");
-    }
+  const isPasswordValid = await user.isPasswordCorrect(password);
 
-    const {accessToken, refreshToken} = await generateAccessAndRefreshTokens(user._id);
+  if (!isPasswordValid) {
+    throw new ApiError(404, "Invalid user credentials");
+  }
 
-    const loggedInUser = await User.findById(user._id).select("-password -refreshToken");
+  const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(
+    user._id
+  );
 
-    const options = {
-        httpOnly : true,
-        secure : true,
-    }
+  const loggedInUser = await User.findById(user._id).select(
+    "-password -refreshToken"
+  );
 
-    return res.status(200)
-    .cookie("accessToken", accessToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production", // must be false on localhost
-        sameSite: "lax", // or "none" if cross-origin
-    })
-    .cookie("refreshToken", refreshToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax"
-    })
-    .json(new ApiResponse(200, { user, accessToken, refreshToken }, "Logged in"));
+  const options = {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+  };
 
-
-})
+  return res
+    .status(200)
+    .cookie("accessToken", accessToken, options)
+    .cookie("refreshToken", refreshToken, options)
+    .json(
+      new ApiResponse(
+        200,
+        { user: loggedInUser, accessToken, refreshToken },
+        "User logged in successfully"
+      )
+    );
+});
 
 const logoutUser = asyncHandler(async (req, res) => {
     await User.findByIdAndUpdate(
@@ -174,7 +178,7 @@ const refreshAccessToken = asyncHandler(async(req, res) => {
     try {
         const decodedToken = jwt.verify(incomingRefreshToken, process.env.REFRESH_TOKEN_SECRET);
         
-        const user = User.findById(decodedToken?._id)
+        const user = await User.findById(decodedToken?._id)
         if(!user){
             throw new ApiError(401, "invalid refresh token");
         }
@@ -208,7 +212,7 @@ const changeCurrentPassword = asyncHandler(async(req, res) => {
     const {oldPassword, newPassword} = req.body
 
     const user = await User.findById(req.user?._id)
-    isPasswordCorrect = await user.isPasswordCorrect(oldPassword)
+    const isPasswordCorrect = await user.isPasswordCorrect(oldPassword)
 
     if(!isPasswordCorrect){
         throw new ApiError(401, "invalid password")

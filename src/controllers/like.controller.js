@@ -1,10 +1,10 @@
-import { asyncHandler } from "../utils/asyncHandler";
-import { ApiError } from "../utils/ApiError";
-import { Like } from "../models/like.model";
-import { ApiResponse } from "../utils/ApiResponse";
+import { asyncHandler } from "../utils/asyncHandler.js";
+import { ApiError } from "../utils/ApiError.js";
+import { Like } from "../models/like.model.js";
+import { ApiResponse } from "../utils/ApiResponse.js";
 
 const toggleVideoLike = asyncHandler(async(req, res) => {
-    const videoId = req.params;
+    const {videoId} = req.params;
     if(!videoId) return new ApiError(400, "video id wrong or empty");
     
     const userId = req.user._id;
@@ -34,7 +34,6 @@ const toggleVideoLike = asyncHandler(async(req, res) => {
     .status(200)
     .json(new ApiResponse(200, {videoId, liked}, liked ? "video liked successfully" : "video unliked successfully"));
 })
-
 
 const toggleCommentLike = asyncHandler(async(req, res) => {
     const commentId = req.params;
@@ -101,7 +100,6 @@ const toggleTweetLike = asyncHandler(async(req, res) => {
     .json(new ApiResponse(200, {tweetId, liked}, liked ? "comment liked successfully" : "comment unliked successfully"));
 
 })
-
 
 const getLikedVideos = asyncHandler(async(req, res) => {
     const userId = req.user._id;
@@ -174,8 +172,6 @@ const getLikedVideos = asyncHandler(async(req, res) => {
     .status(200)
     .json(new ApiResponse(200, {likedVideos}, "liked videos fetched successfully"));
 })
-
-
 
 export {
     toggleCommentLike,

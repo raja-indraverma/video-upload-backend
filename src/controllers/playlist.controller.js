@@ -1,8 +1,9 @@
-import { PlayList } from "../models/PlayList.model";
-import { ApiError } from "../utils/ApiError";
-import { ApiResponse } from "../utils/ApiResponse";
-import { asyncHandler } from "../utils/asyncHandler";
-import { PlayList } from "../models/PlayList.model";
+import { PlayList } from "../models/playlist.model.js";
+import { ApiError } from "../utils/ApiError.js";
+import { ApiResponse } from "../utils/ApiResponse.js";
+import { asyncHandler } from "../utils/asyncHandler.js";
+import { mongoose, isValidObjectId } from "mongoose";
+// import { PlayList } from "../models/PlayList.model";
 
 const createPlaylist = asyncHandler(async(req, res) => {
     const {name , description } = req.body;
@@ -10,7 +11,7 @@ const createPlaylist = asyncHandler(async(req, res) => {
 
     if(!name || !description) throw new ApiError(400, "Name and description are required");
 
-    const existingPlaylist = PlayList.findOne({
+    const existingPlaylist = await PlayList.findOne({
         name, 
         owner : userId
     })
@@ -42,7 +43,7 @@ const getUserPlaylists = asyncHandler(async (req, res) => {
     //match the owner's all playlists
     {
       $match: {
-        owner: mongoose.Types.ObjectId(userId),
+        owner: new mongoose.Types.ObjectId(userId),
       },
     },
     // lookup for getting owner's details
@@ -151,7 +152,7 @@ const getPlaylistById = asyncHandler(async (req, res) => {
     //match the owner's all playlists
     {
       $match: {
-        _id: mongoose.Types.ObjectId(playlistId),
+        _id: new mongoose.Types.ObjectId(playlistId),
       },
     },
     // lookup for getting owner's details
@@ -267,11 +268,11 @@ const addVideoToPlaylist = asyncHandler(async (req, res) => {
     throw new ApiError(400, "No such Playlist found");
   }
 
-  if (!PlayList.owner.equals(req.user?._id)) {
+  if (!playlist.owner.equals(req.user?._id)) {
     throw new ApiError(403, "You are not allowed to update this playlist");
   }
 
-  if (PlayList.videos.includes(videoId)) {
+  if (playlist.videos.includes(videoId)) {
     throw new ApiError(400, "Video already exists in the Playlist");
   }
 
@@ -306,20 +307,20 @@ const removeVideoFromPlaylist = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Invalid or missing video ID");
   }
 
-  const playlist = await findById(playlistId);
+  const playlist = await PlayList.findById(playlistId);
 
   if (!playlist) {
     throw new ApiError(400, "No such playlist found");
   }
 
-  if (!PlayList.owner.equals(req.user._id)) {
+  if (!playlist.owner.equals(req.user._id)) {
     throw new ApiError(
       403,
       "You are not allowed to remove video from this playlist"
     );
   }
 
-  if (!PlayList.videos.includes(videoId)) {
+  if (!playlist.videos.includes(videoId)) {
     throw new ApiError(
       400,
       "Video with this ID does not exists in this playlist"
@@ -359,11 +360,11 @@ const deletePlaylist = asyncHandler(async (req, res) => {
     throw new ApiError(400, "No playlist found with this ID");
   }
 
-  if (!PlayList.owner.equals(req.user._id)) {
+  if (!playlist.owner.equals(req.user._id)) {
     throw new ApiError(403, "You are not allowed to delete this playlist");
   }
 
-  const deletePlaylist = await PlayList.findByIdAndDelete(PlayList._id);
+  const deletePlaylist = await PlayList.findByIdAndDelete(playlist._id);
 
   if (!deletePlaylist) {
     throw new ApiError(400, "Error while deleting this playlist");

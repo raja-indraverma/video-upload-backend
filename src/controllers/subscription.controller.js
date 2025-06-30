@@ -1,26 +1,27 @@
-import mongoose from "mongoose";
-import { Subscription } from "../models/subscriptions.models";
-import { ApiError } from "../utils/ApiError";
-import { ApiResponse } from "../utils/ApiResponse";
-import { asyncHandler } from "../utils/asyncHandler";
+import {mongoose} from "mongoose";
+import { isValidObjectId } from "mongoose";
+import { Subscription } from "../models/subscriptions.models.js";
+import { ApiError } from "../utils/ApiError.js";
+import { ApiResponse } from "../utils/ApiResponse.js";
+import { asyncHandler } from "../utils/asyncHandler.js";
 
-const toggleSubscriber = asyncHandler(async(req, res) => {
-    const channelId = req.params;
+const toggleSubscription = asyncHandler(async(req, res) => {
+    const {channelId} = req.params;
     const userId = req.user._id;
 
-    if(!channelId) return new ApiError(400, "invalid or empty channed id");
+    if(!channelId) throw new ApiError(400, "invalid or empty channed id");
 
     const subscribed = await Subscription.findOne({
-        channelId : channelId,
+        channel : channelId,
         subscriber : userId,
     })
 
     let subscribe;
 
     if(subscribed){
-        const deletedSubscription = await subscribed.deleteOne
+        const deletedSubscription = await subscribed.deleteOne()
         
-        if(!deletedSubscription) return new ApiError(500, "error while unsubscribing");
+        if(!deletedSubscription) throw new ApiError(500, "error while unsubscribing");
         subscribe = false;
     }
     else {
@@ -29,7 +30,7 @@ const toggleSubscriber = asyncHandler(async(req, res) => {
             subscriber : userId
         })
 
-        if(!newSubscription) return new ApiError(500, "error while subscribing");
+        if(!newSubscription) throw new ApiError(500, "error while subscribing");
         subscribe = true;
     }
 
@@ -39,13 +40,13 @@ const toggleSubscriber = asyncHandler(async(req, res) => {
 })
 
 const getChannelSubscribers = asyncHandler(async(req, res) => {
-    const channelId = req.params;
-    if(!channelId) return new ApiError(400, "invalid or empty channed id");
+    const {channelId} = req.params;
+    if(!channelId || !isValidObjectId(channelId)) throw new ApiError(400, "invalid or empty channed id");
 
     const subscriberList = await Subscription.aggregate([
         {
             $match : {
-                channel : mongoose.Types.ObjectId(channelId)
+                channel : new mongoose.Types.ObjectId(channelId)
             }
         },
         {
@@ -54,13 +55,13 @@ const getChannelSubscribers = asyncHandler(async(req, res) => {
                 localField : "subscriber",
                 foreignField : "_id",
                 as : "subscriber",
-                pipeline : {
+                pipeline : [{
                     $project : {
                         username : 1,
                         avatar : 1,
                         fullname : 1,
                     }
-                }
+                }]
             }
         },
         {
@@ -73,7 +74,7 @@ const getChannelSubscribers = asyncHandler(async(req, res) => {
         }
     ])
 
-    if(!subscriberList) return new ApiError(400, "failed to fetch subscriber list")
+    if(!subscriberList) throw new ApiError(400, "failed to fetch subscriber list")
 
     return res
     .status(200)
@@ -81,18 +82,18 @@ const getChannelSubscribers = asyncHandler(async(req, res) => {
 })
 
 const getSubscribedChannels = asyncHandler(async(req, res) => {
-    const {userId} = req.user._id;
+    const userId = req.user._id;
 
     if(!userId) return new ApiError(400, "invalid or empty user id");
 
     const subscribedCount = await Subscription.countDocuments({
-        subcriber : mongoose.Types.ObjectId(userId)
+        subcriber : new mongoose.Types.ObjectId(userId)
     })
 
-    const channelList = Subscription.aggregate([
+    const channelList = await Subscription.aggregate([
         {
             $match : {
-                subcriber : mongoose.Types.ObjectId(userId)
+                subcriber : new mongoose.Types.ObjectId(userId)
             },
         },
         {
@@ -101,13 +102,13 @@ const getSubscribedChannels = asyncHandler(async(req, res) => {
                 localField : "channel",
                 foreignField : "_id",
                 as : "channelDetails",
-                pipeline : {
+                pipeline : [{
                     $project : {
                         username : 1,
                         fullname : 1,
-                        avatar : 1.
+                        avatar : 1,
                     }
-                }
+                }]
             }
         },
         {
@@ -124,23 +125,23 @@ const getSubscribedChannels = asyncHandler(async(req, res) => {
         }
     ])
 
-    if(!channelList) return new ApiError(400, "failed to fetch subscribed channels");
+    if(!channelList) throw new ApiError(400, "failed to fetch subscribed channels");
 
     return res
     .status(200)
-    .json(200, {channelList, subscribedCount}, "subsribed channels fetched succesfully");
+    .json(new ApiResponse( 200, {channelList, subscribedCount}, "subsribed channels fetched succesfully"));
 
 })
 
 const subscriberCount = asyncHandler(async(req, res) => {
-    const channelId = req.params
-    if(!channelId) return new ApiError(400, "channelId invalid or empty");
+    const {channelId} = req.params
+    if(!channelId) throw new ApiError(400, "channelId invalid or empty");
 
     const subscribers = await Subscription.countDocuments({
-        channel : mongoose.Types.ObjectId(channelId)
+        channel : new mongoose.Types.ObjectId(channelId)
     })
 
-    if(!subscribers) return new ApiError(400, "failed to fetch subscriber count");
+    if(!subscribers) throw new ApiError(400, "failed to fetch subscriber count");
 
     return res
     .status(200)
@@ -148,7 +149,7 @@ const subscriberCount = asyncHandler(async(req, res) => {
 })
 
 export {
-    toggleSubscriber,
+    toggleSubscription,
     getSubscribedChannels,
     getChannelSubscribers,
     subscriberCount

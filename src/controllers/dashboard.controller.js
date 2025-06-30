@@ -1,10 +1,10 @@
-import { asyncHandler } from "../utils/asyncHandler";
-import { Video } from "../models/video.models";  
-import mongoose, { mongo } from "mongoose";
-import { Subscription } from "../models/subscriptions.models";
-import { Like } from "../models/like.model";
-import { ApiError } from "../utils/ApiError";
-import { ApiResponse } from "../utils/ApiResponse";
+import { asyncHandler } from "../utils/asyncHandler.js";
+import { Video } from "../models/video.models.js";  
+import mongoose from "mongoose";
+import { Subscription } from "../models/subscriptions.models.js";
+import { Like } from "../models/like.model.js";
+import { ApiError } from "../utils/ApiError.js";
+import { ApiResponse } from "../utils/ApiResponse.js";
 
 
 const getChannelStats = asyncHandler(async(req, res) => {
@@ -13,7 +13,7 @@ const getChannelStats = asyncHandler(async(req, res) => {
     const videoCount = await Video.aggregate([
         {
             $match : {
-                ownner : mongoose.Types.ObjectId(owner),
+                owner : new mongoose.Types.ObjectId(userId),
             },
         },
         {
@@ -38,7 +38,7 @@ const getChannelStats = asyncHandler(async(req, res) => {
     const subscriberCount = await Subscription.aggregate([
         {
             $match : {
-                channel : mongoose.Types.ObjectId(userId);
+                channel : new mongoose.Types.ObjectId(userId)
             }
         },
         {
@@ -63,7 +63,7 @@ const getChannelStats = asyncHandler(async(req, res) => {
             $lookup : {
                 from : "videos",
                 localField : "video",
-                foreignField : _id,
+                foreignField : "_id",
                 as : "videoInfo"
             }
         },
@@ -90,12 +90,10 @@ const getChannelStats = asyncHandler(async(req, res) => {
 
 
     const info = {
-    totalViews: videoCount[0].totalViews ? videoCount[0].totalViews : 0,
-    totalVideos: videoCount[0].totalVideos ? videoCount[0].totalVideos : 0,
-    totalSubscribers: subscriberCount[0].totalSubscribers
-      ? subscriberCount[0].totalSubscribers
-      : 0,
-    totalLikes: likeCount[0].totalLikes ? likeCount[0].totalLikes : 0,
+    totalViews: videoCount[0]?.totalviews || 0,
+  totalVideos: videoCount[0]?.totalvidoes || 0,
+  totalSubscribers: subscriberCount[0]?.totalSubscribers || 0,
+  totalLikes: likeCount[0]?.totalLikes || 0,
   };
 
   return res
@@ -104,14 +102,13 @@ const getChannelStats = asyncHandler(async(req, res) => {
 
 })
 
-
 const getAllChannelVideos = asyncHandler(async(req, res) => {
     const userId = req.user._id
 
     const videos = Video.aggregate([
         {
             $match : {
-                owner : mongoose.Types.ObjectId(userId)
+                owner : new mongoose.Types.ObjectId(userId)
             }
         },
         {
@@ -128,7 +125,7 @@ const getAllChannelVideos = asyncHandler(async(req, res) => {
         }
     ]);
 
-    if(!videos) return new ApiError(400, "failed to fetch videos")
+    if(!videos) throw new ApiError(400, "failed to fetch videos")
     
     return res
     .status(200)

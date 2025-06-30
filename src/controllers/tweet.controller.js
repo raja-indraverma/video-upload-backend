@@ -1,17 +1,17 @@
 import mongoose from "mongoose";
-import { Tweet } from "../models/tweet.model";
-import { ApiError } from "../utils/ApiError";
-import { ApiResponse } from "../utils/ApiResponse";
-import { asyncHandler } from "../utils/asyncHandler";
+import { Tweet } from "../models/tweet.model.js";
+import { ApiError } from "../utils/ApiError.js";
+import { ApiResponse } from "../utils/ApiResponse.js";
+import { asyncHandler } from "../utils/asyncHandler.js";
 
 const createTweet = asyncHandler(async(req, res) => {
     const userId = req.user._id;
 
-    const content = req.body;
+    const {content} = req.body;
 
     if(!content) return new ApiError(400, "tweet can't be empty");
 
-    const tweet = Tweet.create({
+    const tweet = await Tweet.create({
         content : content,
         owner : userId,
     })
@@ -24,13 +24,13 @@ const createTweet = asyncHandler(async(req, res) => {
 })
 
 const getUserTweets = asyncHandler(async(req, res) => {
-    const userId = req.params;
-    if(!userId) return new ApiError(400, "userid can't be empty");
+    const userId = req.user._id;
+    if(!userId) throw new ApiError(400, "userid can't be empty");
 
-    const tweets = Tweet.aggregate([
+    const tweets = await Tweet.aggregate([
         {
             $match: {
-                owner: mongoose.Types.ObjectId(userId)
+                owner: new mongoose.Types.ObjectId(userId)
             }
         },
         {
@@ -49,7 +49,7 @@ const getUserTweets = asyncHandler(async(req, res) => {
                         $project : {
                             username : 1,
                             fullname : 1,
-                            avatar : 1.
+                            avatar : 1,
                         }
                     }
                 ]
@@ -71,7 +71,7 @@ const getUserTweets = asyncHandler(async(req, res) => {
         }
     ])
 
-    if(!tweets) return new ApiResponse(400, "failed to fetch tweets");
+    if(!tweets) throw new ApiResponse(400, "failed to fetch tweets");
 
     return res
     .status(200)
@@ -79,20 +79,20 @@ const getUserTweets = asyncHandler(async(req, res) => {
 })
 
 const updateTweet = asyncHandler(async(req, res) => {
-    const tweetId = req.params;
+    const {tweetId} = req.params;
     const userId = req.user._id
 
-    if(!tweetId) return new ApiError(400, "missing or invalid tweet id ");
+    if(!tweetId) throw new ApiError(400, "missing or invalid tweet id ");
 
-    const content = req.body;
-    if(!content) return new ApiError(400, "missing or invalid content");
+    const {content} = req.body;
+    if(!content) throw new ApiError(400, "missing or invalid content");
 
     const tweet = await Tweet.findById(tweetId)
 
-    if(!tweet) return new ApiError(404, "can't fetch tweet");
+    if(!tweet) throw new ApiError(404, "can't fetch tweet");
     if(!tweet.owner.equals(userId)) return new ApiError(400, "you don't have authority to update the tweet");
 
-    const updatedTweet = Tweet.findByIdAndUpdate(
+    const updatedTweet = await Tweet.findByIdAndUpdate(
         tweetId,
         {
             $set : {
@@ -102,28 +102,28 @@ const updateTweet = asyncHandler(async(req, res) => {
         {new : true}
     );
 
-    if(!updateTweet) return new ApiError(400, "failed to update the tweet")
+    if(!updatedTweet) return new ApiError(400, "failed to update the tweet")
 
     return res
     .status(200)
-    .json(new ApiResponse(200, "tweet updated successfully"));
+    .json(new ApiResponse(200, updatedTweet, "tweet updated successfully"));
 })
 
 const deleteTweet = asyncHandler(async(req, res) => {
-    const tweetId = req.params;
+    const {tweetId} = req.params;
     const userId = req.user._id
 
-    if(!tweetId) return new ApiError(400, " invalid tweedId")
+    if(!tweetId) throw new ApiError(400, " invalid tweedId")
 
     const tweet = await Tweet.findById(tweetId)
 
-    if(!tweet) return new ApiError(404, "tweet now found")
+    if(!tweet) throw new ApiError(404, "tweet now found")
     
-    if(!tweet.owner.equals(userId)) return new ApiError(400, "you are now authorized to delete thi stweet")
+    if(!tweet.owner.equals(userId)) throw new ApiError(400, "you are now authorized to delete thi stweet")
     
     const deletedTweet = await Tweet.findByIdAndDelete(tweetId)
 
-    if(!deletedTweet) return new ApiError(400, "failed to delete tweet");
+    if(!deletedTweet) throw new ApiError(400, "failed to delete tweet");
 
     return res
     .status(200)
